@@ -12,13 +12,9 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    session.cpp \
-    connection.cpp \
 
 
 HEADERS  += mainwindow.h \
-    session.h \
-    connection.h \
 
 
 FORMS    += mainwindow.ui
@@ -37,24 +33,10 @@ DEFINES += COMMUNI_SHARED
 BUILDSTR = '\\"$$system(git describe)\\"'
 DEFINES += BUILD=\"$${BUILDSTR}\"
 
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../SessionWrapper/release/ -lSessionWrapper
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../SessionWrapper/debug/ -lSessionWrapper
+else:symbian: LIBS += -lSessionWrapper
+else:unix: LIBS += -L$$PWD/../SessionWrapper/ -lSessionWrapper
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+INCLUDEPATH += $$PWD/../SessionWrapper
+DEPENDPATH += $$PWD/../SessionWrapper

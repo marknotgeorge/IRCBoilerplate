@@ -1,7 +1,7 @@
 
 #include <QtGui/QApplication>
 #include "mainwindow.h"
-#include "session.h"
+#include "sessionwrapper.h"
 
 int main(int argc, char *argv[])
 {

@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <IrcMessage>
 #include <QTimer>
-#include "session.h"
+#include "sessionwrapper.h"
 
 namespace Ui {
 class MainWindow;

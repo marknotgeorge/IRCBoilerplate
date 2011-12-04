@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "session.h"
+#include "sessionwrapper.h"
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QSettings>
@@ -28,7 +28,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Create the window title from the BUILD define, which is created
     // from the Git describe string...
     QString versionString = BUILD;
-    baseWindowTitle = "IRCBoilerplate " + versionString;
+    baseWindowTitle = tr("IRCBoilerplate %1 ").arg(versionString);
     this->setWindowTitle(baseWindowTitle);
 
     // Load the settings into the edit boxes...
