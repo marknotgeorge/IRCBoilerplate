@@ -5,6 +5,8 @@
 #include <IrcMessage>
 #include <QTimer>
 #include "sessionwrapper.h"
+#include <QHash>
+#include <QTextEdit>
 
 namespace Ui {
 class MainWindow;
@@ -32,8 +34,8 @@ private slots:
     void on_aboutButton_clicked();
     void onOutputStringReceived(QString channel, QString output);
     void onNewNamesList(QString channel, QStringList namesList);
-    void addToNamesList(const QString& user);
-    void removeFromNamesList(const QString& user);
+    void addToNamesList(const QString& channel, const QString& user);
+    void removeFromNamesList(const QString& channel, const QString& user);
 
     void on_inputEdit_returnPressed();
     void closeEvent(QCloseEvent *event);
@@ -50,6 +52,10 @@ private slots:
 
 
     // Message Handling functions...
+    void on_outputTabWidget_currentChanged(int index);
+
+    void on_outputTabWidget_tabCloseRequested(int index);
+
 protected:
     void handleInviteMessage(IrcInviteMessage* message);
     void handleJoinMessage(IrcJoinMessage* message);
@@ -71,10 +77,8 @@ private:
     QString baseWindowTitle;
     QString chatChannel;
     QTimer *connectionTimeout;
-
-
-
-
+    QHash<QString, QTextEdit*> channelHash;
+    QHash<QString, QStringList> namesListHash;
 
 };
 

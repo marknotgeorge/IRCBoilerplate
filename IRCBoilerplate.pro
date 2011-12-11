@@ -11,10 +11,10 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
+        mainwindow.cpp
 
 
-HEADERS  += mainwindow.h \
+HEADERS  += mainwindow.h
 
 
 FORMS    += mainwindow.ui
@@ -43,4 +43,18 @@ DEPENDPATH += $$PWD/../SessionWrapper
 
 OTHER_FILES += \
     .gitignore
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

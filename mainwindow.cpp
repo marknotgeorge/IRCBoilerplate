@@ -15,6 +15,8 @@
 #include <QList>
 #include <QTimer>
 #include <QDebug>
+#include <QHash>
+#include <QTextEdit>
 
 
 
@@ -79,6 +81,15 @@ MainWindow::MainWindow(QWidget *parent) :
     // initialise chatChannel
     chatChannel.clear();
 
+    // Delete all the tabs created by the designer in outputTabWidget.
+    // Clunky, but I know no other way...
+    ui->outputTabWidget->clear();
+
+    // Set up the server output tab...
+    QTextEdit *editor = new QTextEdit(ui->outputTabWidget);
+    editor->setReadOnly(false);
+    ui->outputTabWidget->addTab(editor, "server");
+    channelHash.insert("server", editor);
 }
 
 MainWindow::~MainWindow()
@@ -88,8 +99,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_joinButton_clicked()
 {
-    if (chatChannel.isEmpty()) // We must have clicked 'Join Channel...'
-    {
+
         bool ok;
         QString channel = QInputDialog::getText(this, tr("Join Channel"), tr("Channel name:"), QLineEdit::Normal, "", &ok);
 
@@ -100,26 +110,7 @@ void MainWindow::on_joinButton_clicked()
             ui->statusBar->showMessage(tr("Joining %1...").arg(channel));
             chatSession->sendCommand(command);
         }
-    }
-    else // We must have clicked 'Leave channel'...
-    {
-        IrcCommand *command;
-        command = IrcCommand::createPart(chatChannel, "Screw you guys, I'm going home!");
-        ui->statusBar->showMessage(tr("Leaving %1...").arg(chatChannel));
-        chatSession->sendCommand(command);
 
-        // No confirmation of a PART message is sent, so we reset everything here...
-        ui->joinButton->setText(tr("Join channel..."));
-        ui->namesListWidget->clear();
-        chatChannel.clear();
-        ui->statusBar->showMessage("");
-        this->setWindowTitle(baseWindowTitle + tr("Connected to %1 ").arg(chatSession->host()));
-        ui->namesListWidget->clear();
-        ui->namesListWidget->setEnabled(false);
-        ui->getNamesButton->setEnabled(false);
-
-
-    }
 }
 
 void MainWindow::on_aboutButton_clicked()
@@ -135,12 +126,10 @@ void MainWindow::on_aboutButton_clicked()
 
 void MainWindow::printToOutputArea(QString channel, QString output)
 {
-    Q_UNUSED(channel) // Just ignore it for now.
-
-    // This is a convenience function to append the output string to
-    // the outputArea TextArea.
-
-    ui->outputArea->append(output);
+    if(channel == chatSession->host())
+        channelHash["server"]->append(output);
+    else if (channelHash[channel])
+        channelHash[channel]->append(output);
 }
 
 void MainWindow::on_inputEdit_returnPressed()
@@ -192,10 +181,17 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::onNewNamesList(QString channel, QStringList namesList)
 {
-    // A new names list has appeared. Add the names to the nameslist...
+    // A new names list has appeared! insert it into the hash table.
+    namesListHash.insert(channel, namesList);
 
-    ui->namesListWidget->clear();
-    ui->namesListWidget->addItems(namesList);
+    // If the channel is the current one, replace the list in the
+    // nicknames ListWidget
+    if (channel == chatChannel)
+    {
+        ui->namesListWidget->clear();
+        ui->namesListWidget->addItems(namesList);
+    }
+
 }
 
 
@@ -282,7 +278,7 @@ void MainWindow::onSessionDisconnected()
     this->setWindowTitle(baseWindowTitle);
 
     // Clear the message window
-    ui->outputArea->clear();
+    // ui->outputArea->clear();
 
     // Clear and disable the names list area and the join channel button...
     ui->namesListWidget->clear();
@@ -350,23 +346,33 @@ void MainWindow::handleInviteMessage(IrcInviteMessage *message)
 void MainWindow::handleJoinMessage(IrcJoinMessage *message)
 {
     IrcSender sender = message->sender();
+    // Check to see if we are the one that's joining...
     if (sender.name() == ui->nicknameEdit->text())
     {
         // Set statusbar...
         ui->statusBar->showMessage(tr("Joined channel %1").arg(message->channel()));
 
-        // Set window title...
-        this->setWindowTitle(baseWindowTitle + tr(" - Connected to %1 on %2").arg(chatSession->host(),
-                                                                                  message->channel()));
+
 
         // Set Join channel button to part from channel...
-        ui->joinButton->setText(tr("Leave %1").arg(message->channel()));
-        chatChannel = message->channel();
-        ui->namesListWidget->setEnabled(true);
-        ui->getNamesButton->setEnabled(true);
+        //ui->joinButton->setText(tr("Leave %1").arg(message->channel()));
+        //chatChannel = message->channel();
+        //ui->namesListWidget->setEnabled(true);
+        //ui->getNamesButton->setEnabled(true);
+
+        // Add channel output tab.
+        if(!channelHash[message->channel()])
+        {
+            QTextEdit *editor = new QTextEdit(ui->outputTabWidget);
+            editor->setReadOnly(false);
+            ui->outputTabWidget->addTab(editor, message->channel());
+            channelHash.insert(message->channel(), editor);
+            ui->outputTabWidget->setCurrentWidget(editor);
+            chatChannel = message->channel();
+        }
     }
     else
-        addToNamesList(sender.name());
+        addToNamesList(message->channel(),sender.name());
 
 }
 
@@ -484,7 +490,7 @@ void MainWindow::handleNumericMessage(IrcNumericMessage *message)
 void MainWindow::handlePartMessage(IrcPartMessage *message)
 {
     IrcSender sender = message->sender();
-    removeFromNamesList(sender.name());
+    removeFromNamesList(message->channel(), sender.name());
 }
 
 void MainWindow::handlePongMessage(IrcPongMessage *message)
@@ -500,7 +506,7 @@ void MainWindow::handlePrivateMessage(IrcPrivateMessage *message)
 void MainWindow::handleQuitMessage(IrcQuitMessage *message)
 {
     IrcSender sender = message->sender();
-    removeFromNamesList(sender.name());
+    removeFromNamesList(chatChannel, sender.name());
 }
 
 void MainWindow::handleTopicMessage(IrcTopicMessage *message)
@@ -513,56 +519,75 @@ void MainWindow::handleUnknownMessage(IrcMessage *message)
     // printToOutputArea("Unknown message received!");
 }
 
-void MainWindow::addToNamesList(const QString &user)
+void MainWindow::addToNamesList(const QString &channel, const QString &user)
 {
-    if (!user.isEmpty())
+    namesListHash[channel].append(user);
+
+
+    if (channel == chatChannel)
     {
         ui->namesListWidget->addItem(user);
         ui->namesListWidget->sortItems();
     }
 }
 
-void MainWindow::removeFromNamesList(const QString &user)
+void MainWindow::removeFromNamesList(const QString &channel, const QString &user)
 {
-    if (!user.isEmpty())
+    QString removeUser = user;
+    bool removed = namesListHash[channel].removeOne(removeUser);
+    if (!removed)
     {
-        // Try without # or @
-        qDebug() << "Removing " << user;
-        QList<QListWidgetItem *> results = ui->namesListWidget->findItems(user, Qt::MatchExactly);
-        // There should only be one item, so it should be safe to just delete the first one in the list.
-        qDebug() << QString("Removing ") << results.count() << QString(" users.");
-        if (results.count() != 0)
+        removeUser.prepend('@');
+        removed = namesListHash[channel].removeOne(removeUser);
+        if (!removed)
         {
-            delete results.first();
-            return;
+            removeUser.replace('@', '#');
+            namesListHash[channel].removeOne(removeUser);
         }
+    }
 
-        // Now try with #
-        results.clear();
-        QString hashUser = user;
-        hashUser.prepend("#");
-        qDebug() << "Removing " << hashUser;
-        results = ui->namesListWidget->findItems(hashUser, Qt::MatchExactly);
-        // There should only be one item, so it should be safe to just delete the first one in the list.
-        qDebug() << QString("Removing ") << results.count() << QString(" users.");
-        if (results.count() != 0)
+    if (channel == chatChannel)
+    {
+        if (!user.isEmpty())
         {
-            delete results.first();
-            return;
-        }
+            // Try without # or @
+            qDebug() << "Removing " << user;
+            QList<QListWidgetItem *> results = ui->namesListWidget->findItems(user, Qt::MatchExactly);
+            // There should only be one item, so it should be safe to just delete the first one in the list.
+            qDebug() << QString("Removing ") << results.count() << QString(" users.");
+            if (results.count() != 0)
+            {
+                delete results.first();
+                return;
+            }
 
-        // Now try with #
-        results.clear();
-        QString atUser = user;
-        atUser.prepend("@");
-        qDebug() << "Removing " << atUser;
-        results = ui->namesListWidget->findItems(atUser, Qt::MatchExactly);
-        // There should only be one item, so it should be safe to just delete the first one in the list.
-        qDebug() << QString("Removing ") << results.count() << QString(" users.");
-        if (results.count() != 0)
-        {
-            delete results.first();
-            return;
+            // Now try with #
+            results.clear();
+            QString hashUser = user;
+            hashUser.prepend("#");
+            qDebug() << "Removing " << hashUser;
+            results = ui->namesListWidget->findItems(hashUser, Qt::MatchExactly);
+            // There should only be one item, so it should be safe to just delete the first one in the list.
+            qDebug() << QString("Removing ") << results.count() << QString(" users.");
+            if (results.count() != 0)
+            {
+                delete results.first();
+                return;
+            }
+
+            // Now try with #
+            results.clear();
+            QString atUser = user;
+            atUser.prepend("@");
+            qDebug() << "Removing " << atUser;
+            results = ui->namesListWidget->findItems(atUser, Qt::MatchExactly);
+            // There should only be one item, so it should be safe to just delete the first one in the list.
+            qDebug() << QString("Removing ") << results.count() << QString(" users.");
+            if (results.count() != 0)
+            {
+                delete results.first();
+                return;
+            }
         }
     }
 }
@@ -587,3 +612,53 @@ void MainWindow::onConnectionTimeout()
 }
 
 
+
+void MainWindow::on_outputTabWidget_currentChanged(int index)
+{
+    // Set chatchannel to the current tab
+    chatChannel = ui->outputTabWidget->tabText(index);
+
+    if (chatChannel == "server")
+    {
+        // This is the server tab, so disable the names list
+        ui->namesListWidget->clear();
+        ui->namesListWidget->setEnabled(false);
+    }
+    else
+    {
+        // This is a normal channel tab, so change the names list
+        ui->namesListWidget->setEnabled(true);
+        ui->namesListWidget->clear();
+        ui->namesListWidget->addItems(namesListHash[chatChannel]);
+    }
+}
+
+void MainWindow::on_outputTabWidget_tabCloseRequested(int index)
+{
+    QString channel = ui->outputTabWidget->tabText(index);
+
+    if (channel == "server")
+    {
+        // We must want to disconnect, but check we're connected first...
+        if (chatSession->isActive())
+            on_connectButton_clicked();
+    }
+    else
+    {
+        // Send the command to leave the channel...
+        IrcCommand *command;
+        command = IrcCommand::createPart(channel, "Screw you guys, I'm going home!");
+        ui->statusBar->showMessage(tr("Leaving %1...").arg(channel));
+        chatSession->sendCommand(command);
+
+        // Remove the channel and the entry in the hash table...
+        QTextEdit *editor = channelHash[channel];
+        ui->outputTabWidget->removeTab(index);
+        channelHash.remove(channel);
+        delete editor;
+    }
+
+
+
+
+}
