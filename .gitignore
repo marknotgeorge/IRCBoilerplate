@@ -28,3 +28,9 @@ desktop.ini
 
 # Editors temporary files 
 *~
+
+# User files
+*.user
+
+#Automatically generated makefiles
+Makefile*

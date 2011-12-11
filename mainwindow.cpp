@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget *parent) :
     // Create a timeout
 
     // Connect signals to slots...
-    connect(chatSession, SIGNAL(outputString(QString )), this, SLOT(onOutputStringReceived(QString)));
+    connect(chatSession, SIGNAL(outputString(QString, QString )), this, SLOT(onOutputStringReceived(QString, QString)));
     connect(chatSession, SIGNAL(newNamesList(QString,QStringList)), this, SLOT(onNewNamesList(QString,QStringList)));
     connect(chatSession, SIGNAL(connected()), this, SLOT(onSessionConnected()));
     connect(chatSession, SIGNAL(disconnected()),this, SLOT(onSessionDisconnected()));
@@ -133,8 +133,10 @@ void MainWindow::on_aboutButton_clicked()
     QMessageBox::about(this, tr("About IRCBoilerplate"), aboutString);
 }
 
-void MainWindow::printToOutputArea(QString output)
+void MainWindow::printToOutputArea(QString channel, QString output)
 {
+    Q_UNUSED(channel) // Just ignore it for now.
+
     // This is a convenience function to append the output string to
     // the outputArea TextArea.
 
@@ -153,9 +155,9 @@ void MainWindow::on_inputEdit_returnPressed()
     }
 }
 
-void MainWindow::onOutputStringReceived(QString output)
+void MainWindow::onOutputStringReceived(QString channel, QString output)
 {
-    printToOutputArea(output);
+    printToOutputArea(channel, output);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

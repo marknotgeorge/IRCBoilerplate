@@ -40,3 +40,7 @@ else:unix: LIBS += -L$$PWD/../SessionWrapper/ -lSessionWrapper
 
 INCLUDEPATH += $$PWD/../SessionWrapper
 DEPENDPATH += $$PWD/../SessionWrapper
+
+OTHER_FILES += \
+    .gitignore
+

@@ -18,7 +18,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    void printToOutputArea(QString output);
+    void printToOutputArea(QString channel, QString output);
     Session *chatSession;
 
 signals:
@@ -30,7 +30,7 @@ private slots:
     void on_joinButton_clicked();
 
     void on_aboutButton_clicked();
-    void onOutputStringReceived(QString output);
+    void onOutputStringReceived(QString channel, QString output);
     void onNewNamesList(QString channel, QStringList namesList);
     void addToNamesList(const QString& user);
     void removeFromNamesList(const QString& user);
